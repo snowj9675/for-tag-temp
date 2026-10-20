@@ -44,6 +44,13 @@ def main():
             c.execute("SELECT id,url FROM public.channel_videos WHERE id>%s AND tags IS NULL ORDER BY id LIMIT %s",(last,a.batch))
             rows=c.fetchall()
         if not rows:
+            if state.get("pass",1)==1:
+                state["pass"]=2
+                state["last_id"]=0
+                last=0
+                sha=checkpoint_put(state,sha)
+                print("First sweep finished; retrying previously untagged videos once.",flush=True)
+                continue
             state["complete"]=True
             break
         with ThreadPoolExecutor(max_workers=a.workers) as pool:
