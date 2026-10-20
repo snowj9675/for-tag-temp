@@ -22,20 +22,40 @@ HEADERS = {
 }
 
 
-def normalize_url(raw):
-    """Accept relative paths, full URLs, and Markdown-wrapped URLs."""
+def compact_url(raw):
+    """Canonical compact path /eid/slug; returns None for unknown patterns."""
     raw = (raw or "").strip()
-    m = re.fullmatch(r"\[[^\]]+\]\((https?://[^)]+)\)", raw)
+    m = re.fullmatch(r"\\[[^\\]]+\\]\\((https?://[^)]+)\\)", raw)
     if m:
         raw = m.group(1)
-    raw = raw.replace("\\/", "/")
-    if raw.startswith("/"):
-        raw = SITE_ORIGIN + raw
-    parsed = urlsplit(raw)
-    if parsed.scheme not in ("http", "https") or parsed.hostname not in (
-        "www.xvideos.com", "xvideos.com"
-    ):
-        raise ValueError("URL has an unexpected host or scheme")
+    raw = raw.replace("\\\\/", "/")
+    if raw.startswith("http://") or raw.startswith("https://"):
+        parsed = urlsplit(raw)
+        if parsed.hostname not in ("www.xvideos.com", "xvideos.com"):
+            raise ValueError("Unexpected URL domain")
+        raw = parsed.path
+    raw = raw.split("?", 1)[0]
+    m = re.fullmatch(r"/prof-video-click/upload/[^/]+/([a-zA-Z0-9]+)/([^/?#]+)/*", raw)
+    if m:
+        return f"/{m.group(1)}/{m.group(2)}"
+    m = re.fullmatch(r"/([a-zA-Z0-9]+)/([^/?#]+)/*", raw)
+    if m:
+        return f"/{m.group(1)}/{m.group(2)}"
+    m = re.fullmatch(r"/video\\.([a-zA-Z0-9]+)/([^/?#]+)/*", raw)
+    if m:
+        return f"/{m.group(1)}/{m.group(2)}"
+    return None
+
+
+def normalize_url(raw):
+    """Construct the canonical page URL from compact or old upload paths."""
+    compact = compact_url(raw)
+    if compact:
+        return SITE_ORIGIN + "/video." + compact.lstrip("/")
+    raw = (raw or "").strip()
+    parsed = urlsplit(SITE_ORIGIN + raw if raw.startswith("/") else raw)
+    if parsed.scheme not in ("http", "https") or parsed.hostname not in ("www.xvideos.com", "xvideos.com"):
+        raise ValueError("Unexpected URL domain/scheme")
     return urlunsplit(("https", "www.xvideos.com", parsed.path, parsed.query, ""))
 
 
