@@ -28,7 +28,7 @@ def compact_url(raw):
     m = re.fullmatch(r"\\[[^\\]]+\\]\\((https?://[^)]+)\\)", raw)
     if m:
         raw = m.group(1)
-    raw = raw.replace("\\\\/", "/")
+    raw = raw.replace("\\/", "/")
     if raw.startswith("http://") or raw.startswith("https://"):
         parsed = urlsplit(raw)
         if parsed.hostname not in ("www.xvideos.com", "xvideos.com"):
