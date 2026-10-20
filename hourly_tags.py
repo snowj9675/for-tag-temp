@@ -1,6 +1,6 @@
 import argparse,json,os,time,base64,requests,psycopg
 from concurrent.futures import ThreadPoolExecutor,as_completed
-from tag_test import fetch_one
+from tag_test import fetch_one, compact_url
 
 API="https://api.github.com"
 REPO=os.environ["GITHUB_REPOSITORY"]
@@ -56,10 +56,16 @@ def main():
         with ThreadPoolExecutor(max_workers=a.workers) as pool:
             result=list(pool.map(lambda item:fetch_one(*item),rows))
         with db.cursor() as c:
+            raw_by_id=dict(rows)
             for obj in result:
                 if obj.get("tags"):
-                    c.execute("UPDATE public.channel_videos SET tags=%s WHERE id=%s AND tags IS NULL",
-                              (obj["tags"],obj["id"]))
+                    short_path=compact_url(raw_by_id[obj["id"]])
+                    if short_path:
+                        c.execute("UPDATE public.channel_videos SET tags=%s,url=%s WHERE id=%s AND tags IS NULL",
+                                  (obj["tags"],short_path,obj["id"]))
+                    else:
+                        c.execute("UPDATE public.channel_videos SET tags=%s WHERE id=%s AND tags IS NULL",
+                                  (obj["tags"],obj["id"]))
                     good+=1
                 else:
                     bad+=1
