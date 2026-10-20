@@ -23,32 +23,31 @@ HEADERS = {
 
 
 def compact_url(raw):
-    """Canonical compact path /eid/slug; returns None for unknown patterns."""
+    """Return /eid/slug for recognized legacy, compact, or canonical URLs."""
     raw = (raw or "").strip()
-    m = re.fullmatch(r"\\[[^\\]]+\\]\\((https?://[^)]+)\\)", raw)
-    if m:
-        raw = m.group(1)
+    match = re.fullmatch(r"\[[^\]]+\]\((https?://[^)]+)\)", raw)
+    if match:
+        raw = match.group(1)
     raw = raw.replace("\\/", "/")
-    if raw.startswith("http://") or raw.startswith("https://"):
+    if raw.startswith(("http://", "https://")):
         parsed = urlsplit(raw)
         if parsed.hostname not in ("www.xvideos.com", "xvideos.com"):
             raise ValueError("Unexpected URL domain")
         raw = parsed.path
     raw = raw.split("?", 1)[0]
-    m = re.fullmatch(r"/prof-video-click/upload/[^/]+/([a-zA-Z0-9]+)/([^/?#]+)/*", raw)
-    if m:
-        return f"/{m.group(1)}/{m.group(2)}"
-    m = re.fullmatch(r"/([a-zA-Z0-9]+)/([^/?#]+)/*", raw)
-    if m:
-        return f"/{m.group(1)}/{m.group(2)}"
-    m = re.fullmatch(r"/video\\.([a-zA-Z0-9]+)/([^/?#]+)/*", raw)
-    if m:
-        return f"/{m.group(1)}/{m.group(2)}"
+    for pattern in (
+        r"/prof-video-click/upload/[^/]+/([a-zA-Z0-9]+)/([^/?#]+)/?",
+        r"/video\.([a-zA-Z0-9]+)/([^/?#]+)/?",
+        r"/([a-zA-Z0-9]+)/([^/?#]+)/?",
+    ):
+        m = re.fullmatch(pattern, raw)
+        if m:
+            return f"/{m.group(1)}/{m.group(2)}"
     return None
 
 
 def normalize_url(raw):
-    """Construct the canonical page URL from compact or old upload paths."""
+    """Construct canonical public video URL for old or compressed paths."""
     compact = compact_url(raw)
     if compact:
         return SITE_ORIGIN + "/video." + compact.lstrip("/")
