@@ -1,0 +1,41 @@
+name: Test video keyword extraction
+
+on:
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: "Number of database videos to check (1-20)"
+        required: true
+        default: "5"
+      workers:
+        description: "Parallel requests (1-5)"
+        required: true
+        default: "3"
+
+permissions:
+  contents: read
+
+jobs:
+  test-tags:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Fetch tags from sample records
+        run: python tag_test.py --sample "${{ inputs.sample }}" --workers "${{ inputs.workers }}"
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keyword-test-results
+          path: tag_test_results.json
+          if-no-files-found: ignore
+          retention-days: 3
