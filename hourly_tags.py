@@ -38,9 +38,10 @@ def main():
     limit=time.monotonic()+a.seconds
     done=good=bad=0
     last=state.get("last_id",0)
+    batches=0
     while time.monotonic()<limit-60:
         with db.cursor() as c:
-            c.execute("SELECT id,url FROM public.channel_videos WHERE id>%s ORDER BY id LIMIT %s",(last,a.batch))
+            c.execute("SELECT id,url FROM public.channel_videos WHERE id>%s AND tags IS NULL ORDER BY id LIMIT %s",(last,a.batch))
             rows=c.fetchall()
         if not rows:
             state["complete"]=True
@@ -63,8 +64,11 @@ def main():
         state["total_processed"]=state.get("total_processed",0)+len(rows)
         state["total_tagged"]=state.get("total_tagged",0)+sum(bool(x.get("tags")) for x in result)
         state["total_failed"]=state.get("total_failed",0)+sum(not x.get("tags") for x in result)
-        sha=checkpoint_put(state,sha)
+        batches+=1
+        if batches%20==0:
+            sha=checkpoint_put(state,sha)
         print(f"processed={done} tagged={good} no_tags={bad} checkpoint={last}",flush=True)
+    sha=checkpoint_put(state,sha)
     print(json.dumps(state,indent=2))
     db.close()
 
