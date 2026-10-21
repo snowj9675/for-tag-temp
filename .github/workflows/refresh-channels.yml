@@ -1,0 +1,34 @@
+name: Refresh public channel directory
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '36 3 * * 1'
+permissions:
+  contents: write
+concurrency:
+  group: channel-directory-refresh
+  cancel-in-progress: false
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install 'psycopg[binary]>=3.2,<4'
+      - run: python build_channels.py
+      - name: Commit updated directory snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/channels-index.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Refresh cached creator directory"
+            git push
+          fi
