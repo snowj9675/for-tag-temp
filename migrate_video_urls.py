@@ -1,60 +1,58 @@
-"""One-off idempotent Neon catalog URL normalization using DATABASE_URL.
-
-Only legacy /prof-video-click/upload/.../<video-code>/<slug> values are updated.
-Use --dry-run to inspect without writes. No schema changes.
-"""
+"""Resume-safe keyset migration: short transactions on primary DATABASE_URL."""
 import argparse
 import os
+import time
 import psycopg
 
-OLD = r'^/prof-video-click/upload/(?:[^/]+/)*[A-Za-z0-9]+/[A-Za-z0-9_-]+/?$'
-CAPTURE = r'^/prof-video-click/upload/(?:[^/]+/)*([A-Za-z0-9]+)/([A-Za-z0-9_-]+)/?$'
-REPLACEMENT = r'/\1/\2'
-
+PATTERN = r'^/prof-video-click/upload/(?:[^/]+/)*([A-Za-z0-9]+)/([A-Za-z0-9_-]+)/?$'
+REPLACE = r'/\1/\2'
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dry-run", action="store_true")
-    args = parser.parse_args()
-    dsn = os.environ.get("DATABASE_URL")
-    if not dsn:
-        raise RuntimeError("Missing DATABASE_URL GitHub Actions secret")
-    with psycopg.connect(dsn, connect_timeout=20) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SET statement_timeout='120s'")
-            cur.execute("SELECT count(*) FROM public.channel_videos WHERE url ~ %s", (OLD,))
-            before = cur.fetchone()[0]
-            print(f"Matching legacy URLs: {before}")
-            cur.execute("""
-                SELECT id, url,
-                       regexp_replace(url, %s, %s) AS normalized
-                FROM public.channel_videos WHERE url ~ %s
-                ORDER BY id DESC LIMIT 10
-            """, (CAPTURE, REPLACEMENT, OLD))
-            for video_id, old, new in cur.fetchall():
-                print(f"Sample id={video_id}: {old} -> {new}")
-            if args.dry_run:
-                print("DRY RUN: no changes committed")
-                conn.rollback()
-                return
-            if not before:
-                print("No changes needed (idempotent)")
-                return
-            cur.execute("""
-                UPDATE public.channel_videos
-                   SET url = regexp_replace(url, %s, %s)
-                 WHERE url ~ %s
-            """, (CAPTURE, REPLACEMENT, OLD))
-            updated = cur.rowcount
-            if updated != before:
-                raise RuntimeError(f"Count mismatch expected={before} changed={updated}; rolling back")
-            cur.execute("SELECT count(*) FROM public.channel_videos WHERE url ~ %s", (OLD,))
-            remaining = cur.fetchone()[0]
-            if remaining:
-                raise RuntimeError(f"{remaining} matching legacy URLs remain; rolling back")
-            conn.commit()
-            print(f"COMMITTED: {updated} URL rows normalized. Remaining legacy rows: {remaining}")
-
+    p = argparse.ArgumentParser()
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--batch-size", type=int, default=2000)
+    opts = p.parse_args()
+    if not 1 <= opts.batch_size <= 10000:
+        raise ValueError("batch-size must be between 1 and 10000")
+    dsn = os.environ["DATABASE_URL"]
+    cursor = 0
+    total = scanned = 0
+    t0 = time.monotonic()
+    with psycopg.connect(dsn, connect_timeout=20, autocommit=True) as conn:
+        while True:
+            with conn.transaction():
+                with conn.cursor() as cur:
+                    cur.execute("SET LOCAL statement_timeout = '30s'")
+                    cur.execute("""
+                        SELECT id,url FROM public.channel_videos
+                        WHERE id > %s
+                        ORDER BY id LIMIT %s
+                    """, (cursor, opts.batch_size))
+                    rows = cur.fetchall()
+                    if not rows:
+                        break
+                    cursor = rows[-1][0]
+                    scanned += len(rows)
+                    matching = [(rid, raw) for rid, raw in rows
+                                if isinstance(raw, str)
+                                and raw.startswith("/prof-video-click/upload/")]
+                    if matching:
+                        ids = [rid for rid, _ in matching]
+                        if opts.dry_run:
+                            for rid, url in matching[:2]:
+                                print(f"sample id={rid}: {url}", flush=True)
+                        else:
+                            cur.execute("""
+                                UPDATE public.channel_videos
+                                SET url = regexp_replace(url, %s, %s)
+                                WHERE id = ANY(%s) AND url ~ %s
+                            """, (PATTERN, REPLACE, ids, PATTERN))
+                            total += cur.rowcount
+            if scanned % (opts.batch_size * 20) == 0 or len(rows) < opts.batch_size:
+                print(f"scanned={scanned} updated={total} last_id={cursor}", flush=True)
+            if len(rows) < opts.batch_size:
+                break
+    print(f"DONE scanned={scanned} updated={total} seconds={time.monotonic()-t0:.1f}", flush=True)
 
 if __name__ == "__main__":
     main()
