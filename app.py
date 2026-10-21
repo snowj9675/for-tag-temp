@@ -7,12 +7,14 @@ from psycopg_pool import ConnectionPool
 app=Flask(__name__)
 app.config["SECRET_KEY"]=os.environ.get("SECRET_KEY","not-used-for-session")
 DATABASE_URL=os.environ.get("DATABASE_URL","")
+DATABASE_URL_2=os.environ.get("DATABASE_URL_2","")
 IMAGE_DOMAIN=os.environ.get("IMAGE_DOMAIN","https://thumb-cdn77.xvideos-cdn.com").rstrip("/")
 SITE_URL=os.environ.get("SITE_URL","").rstrip("/")
 SITE_NAME=os.environ.get("SITE_NAME","XXX World")
 BRAND_ASSET_BASE_URL=os.environ.get("BRAND_ASSET_BASE_URL","").rstrip("/")
 PAGE_SIZE=max(12,min(int(os.environ.get("PAGE_SIZE","36")),60))
 pool=None
+metadata_pool=None
 
 def db():
     global pool
@@ -28,6 +30,24 @@ def read_query(sql,params=()):
             cur.execute("SET LOCAL statement_timeout = 8000")
             cur.execute(sql,params)
             return cur.fetchall()
+
+def creator_profile(name):
+    """Optional indexed creator description lookup in separate metadata database."""
+    global metadata_pool
+    if not DATABASE_URL_2 or not name:
+        return None
+    try:
+        if metadata_pool is None:
+            metadata_pool=ConnectionPool(conninfo=DATABASE_URL_2,min_size=0,max_size=1,
+                open=True,kwargs={"row_factory":dict_row,"connect_timeout":3},timeout=4)
+        with metadata_pool.connection() as connection:
+            with connection.cursor() as cur:
+                cur.execute("SET LOCAL statement_timeout = 2000")
+                cur.execute("SELECT description,banner_url,avatar_url FROM public.channel_profiles WHERE channel_name=%s",(name,))
+                return cur.fetchone()
+    except Exception:
+        app.logger.warning("Creator profile metadata unavailable",exc_info=False)
+        return None
 
 def image_url(value):
     if not value:return ""
@@ -107,7 +127,7 @@ def channel(name):
     more=len(rows)>PAGE_SIZE
     rows=rows[:PAGE_SIZE]
     if not rows and not pivot:abort(404)
-    resp=make_response(render_template("channel.html",name=name,videos=rows,
+    resp=make_response(render_template("channel.html",name=name,profile=creator_profile(name),videos=rows,
            next_cursor=str(rows[-1]["id"]) if more else None))
     resp.headers["Cache-Control"]="public, s-maxage=300, stale-while-revalidate=3600"
     return resp
