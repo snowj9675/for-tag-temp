@@ -10,7 +10,7 @@ from xml.sax.saxutils import escape
 from urllib.parse import quote
 
 seo=Blueprint("seo",__name__)
-SHARD_SPAN=250000
+SHARD_SPAN=40000
 MAX_SITEMAPS=50000
 
 def origin():
