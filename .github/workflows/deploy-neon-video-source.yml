@@ -34,7 +34,11 @@ jobs:
         run: npm install --no-save pg@^8 @neon/functions@^0.8
       - name: Deploy video resolver to selected project and branch
         run: |
-          neon set-context --project-id "$NEON_PROJECT_ID" --branch "$NEON_BRANCH_ID"
-          neon functions deploy videosource --src functions/video-source.ts --env "SOURCE_API_TOKEN=$SOURCE_API_TOKEN" --wait
+          neon functions deploy videosource \
+            --project-id "$NEON_PROJECT_ID" \
+            --branch "$NEON_BRANCH_ID" \
+            --src functions/video-source.ts \
+            --env "SOURCE_API_TOKEN=$SOURCE_API_TOKEN" \
+            --wait
       - name: Print function deployment details
         run: neon functions get videosource
