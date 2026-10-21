@@ -10,6 +10,7 @@ DATABASE_URL=os.environ.get("DATABASE_URL","")
 IMAGE_DOMAIN=os.environ.get("IMAGE_DOMAIN","https://thumb-cdn77.xvideos-cdn.com").rstrip("/")
 SITE_URL=os.environ.get("SITE_URL","").rstrip("/")
 SITE_NAME=os.environ.get("SITE_NAME","XXX World")
+BRAND_ASSET_BASE_URL=os.environ.get("BRAND_ASSET_BASE_URL","").rstrip("/")
 PAGE_SIZE=max(12,min(int(os.environ.get("PAGE_SIZE","36")),60))
 pool=None
 
@@ -49,6 +50,9 @@ def fmt_views(v):
 
 def channel_path(name):return "/channel/"+quote(name or "",safe="")
 def video_path(vid):return "/video/"+str(vid)
+def brand_asset(filename):
+    return BRAND_ASSET_BASE_URL+"/"+filename if BRAND_ASSET_BASE_URL else "/static/"+filename
+
 def canonical(path):
     return (SITE_URL or request.url_root.rstrip("/"))+path
 
@@ -56,7 +60,7 @@ def canonical(path):
 def helpers():
     return dict(site_name=SITE_NAME,image_url=image_url,preview_url=preview_url,
        format_views=fmt_views,channel_path=channel_path,video_path=video_path,
-       canonical=canonical)
+       canonical=canonical,brand_asset=brand_asset,has_external_brand=bool(BRAND_ASSET_BASE_URL))
 FIELDS="id,title,img,views,duration,rating,rating_percentage,channel_name"
 
 @app.route("/")
