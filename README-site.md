@@ -33,3 +33,26 @@ Recent, popular, top-rated and creator video listings use keyset pagination, not
 
 ## Copyright/operations
 Only publish content that you have permission to distribute. Validate external thumbnail and preview CDN access, third-party host policy, and domain verification for images in Search Console. The site has no actual video playback until you provide your player integration.
+
+
+## V2: split database architecture and creator profiles
+
+The website continues to query `DATABASE_URL` for indexed video browsing. An optional **Vercel** `DATABASE_URL_2` lets a creator page fetch one matching row from the secondary database's `public.channel_profiles` (description, banner, avatar). A failure in database 2 does not interrupt normal video browsing. Add the same second connection URL in Vercel's environment variables, not only in GitHub Actions.
+
+### Prepare database 2
+
+Run **Actions → Inspect both Neon databases (read-only)** first. It reports table structures and sizes from the GitHub `DATABASE_URL` and `DATABASE_URL_2` secrets without changing any records.
+
+Then run **Actions → Initialize secondary Neon metadata schema** to create the following minimal tables **in database 2 only**:
+- `video_categories(video_id BIGINT PRIMARY KEY, categories TEXT[])`
+- `channel_profiles(channel_name TEXT PRIMARY KEY, description TEXT, banner_url TEXT, avatar_url TEXT)`
+
+Neither database has foreign-key links across connection strings; `video_id` and `channel_name` are application-level join keys. Avoid deleting original category data until the exact primary-source schema is known, an idempotent migration completes, source/target totals and samples are compared, and a recoverable backup is available. There is NO destructive migration in this repository yet.
+
+### V2 website
+
+Video detail pages now use the same responsive hover-preview cards as the homepage for related videos, rather than tiny sidebar thumbnails. Channel pages optionally render descriptions and banners from the second database. No extra homepage SQL work is introduced.
+
+### User history and privacy
+
+Do **not** use IP addresses to track adult-content viewing history. IP addresses can be shared, change, and are sensitive in this context. First implement local, opt-in on-device history with a clear erase control; after accounts are designed, allow signed-in users to explicitly sync their favorites/history and provide deletion. Do not write watch activity to a global shared database by default.
