@@ -47,7 +47,7 @@ def upstream_page_url(value):
     path = normalize_path(value)
     if not path:
         return None
-    return UPSTREAM + "/video." + path[1:].replace("/", "/", 1)
+    return UPSTREAM + "/video." + path[1:]
 
 
 def _clean(candidate):
