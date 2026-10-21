@@ -6,7 +6,7 @@ SELECT id, url AS old_url,
        regexp_replace(
            url,
            '^/prof-video-click/upload/(?:[^/]+/)*([A-Za-z0-9]+)/([A-Za-z0-9_-]+)/?$',
-           '/\\1/\\2'
+           '/\1/\2'
        ) AS new_url
 FROM public.channel_videos
 WHERE url ~ '^/prof-video-click/upload/(?:[^/]+/)*[A-Za-z0-9]+/[A-Za-z0-9_-]+/?$'
@@ -20,7 +20,7 @@ LIMIT 50;
 -- SET url = regexp_replace(
 --     url,
 --     '^/prof-video-click/upload/(?:[^/]+/)*([A-Za-z0-9]+)/([A-Za-z0-9_-]+)/?$',
---     '/\\1/\\2'
+--     '/\1/\2'
 -- )
 -- WHERE url ~ '^/prof-video-click/upload/(?:[^/]+/)*[A-Za-z0-9]+/[A-Za-z0-9_-]+/?$';
 -- COMMIT;
