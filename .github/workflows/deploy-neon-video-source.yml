@@ -30,6 +30,8 @@ jobs:
           done
       - name: Install Neon CLI
         run: npm install --global neon@latest
+      - name: Install function dependencies
+        run: npm install --no-save pg@^8 @neon/functions@^0.8
       - name: Deploy video resolver to selected project and branch
         run: |
           neon set-context --project-id "$NEON_PROJECT_ID" --branch "$NEON_BRANCH_ID"
