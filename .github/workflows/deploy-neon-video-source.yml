@@ -1,0 +1,38 @@
+name: Deploy Neon HLS Function
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+      NEON_BRANCH_ID: ${{ secrets.NEON_BRANCH_ID }}
+      SOURCE_API_TOKEN: ${{ secrets.SOURCE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          for key in NEON_API_KEY NEON_PROJECT_ID NEON_BRANCH_ID SOURCE_API_TOKEN; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Missing required secret $key"
+              exit 1
+            fi
+          done
+      - name: Install Neon CLI
+        run: npm install --global neon@latest
+      - name: Deploy video resolver to selected project and branch
+        run: |
+          neon set-context --project-id "$NEON_PROJECT_ID" --branch "$NEON_BRANCH_ID"
+          neon functions deploy videosource --src functions/video-source.ts --env "SOURCE_API_TOKEN=$SOURCE_API_TOKEN" --wait
+      - name: Print function deployment details
+        run: neon functions get videosource
