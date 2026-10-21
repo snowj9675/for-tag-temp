@@ -1,6 +1,5 @@
 import os,re,json
 from urllib.parse import quote
-from video_source import normalize_path, resolve_playback
 from flask import Flask,render_template,request,abort,make_response,jsonify,url_for
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
@@ -154,19 +153,28 @@ def video(vid):
 
 @app.route("/api/video-source/<int:vid>")
 def video_source(vid):
-    rows=read_query("SELECT url FROM public.channel_videos WHERE id=%s",(vid,))
-    if not rows:abort(404)
-    if not normalize_path(rows[0]["url"]):
-        return jsonify(error="Unsupported video path"),422
+    import requests
+    endpoint=os.environ.get("NEON_VIDEO_FUNCTION_URL","").strip()
+    token=os.environ.get("SOURCE_API_TOKEN","").strip()
+    if not endpoint or not token:
+        return jsonify(error="Video source service is not configured"),503
     try:
-        source=resolve_playback(rows[0]["url"])
-    except Exception:
-        app.logger.warning("Video source unavailable for id=%s",vid,exc_info=False)
-        return jsonify(error="Video source unavailable or blocked by upstream"),502
+        upstream=requests.get(endpoint,params={"id":vid},
+            headers={"Authorization":f"Bearer {token}"},
+            timeout=(4,14),allow_redirects=False)
+        if upstream.status_code != 200:
+            return jsonify(error="Video source unavailable"),502
+        source=upstream.json()
+        if source.get("type") not in ("hls","mp4") or not source.get("url","").startswith("https://"):
+            return jsonify(error="Invalid video source response"),502
+    except (requests.RequestException,ValueError):
+        app.logger.warning("Neon video function unavailable",exc_info=False)
+        return jsonify(error="Video source unavailable"),502
     response=jsonify(source)
     response.headers["Cache-Control"]="private, no-store"
     response.headers["X-Robots-Tag"]="noindex"
     return response
+
 
 @app.route("/search")
 def search():
