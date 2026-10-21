@@ -1,1 +1,47 @@
-{% extends 'base.html' %}{% block title %}{{video.title}} — {{site_name}}{% endblock %}{% block description %}{{description_text}}{% endblock %}{% block head %}<meta property="og:type" content="website"><meta property="og:title" content="{{video.title}}"><meta property="og:description" content="{{description_text}}"><meta property="og:image" content="{{image_url(video.img)}}"><meta property="og:url" content="{{canonical(request.path)}}"><meta name="twitter:card" content="summary_large_image"><script type="application/ld+json">{{structured|tojson}}</script>{% endblock %}{% block content %}<div class="shell watch"><a class="back" href="/">← Discover</a><div class="watch-grid"><article><div class="poster"><img src="{{image_url(video.img)}}" alt="{{video.title}}" width="1280" height="720"><div class="poster-message"><span>▶</span><p>Playback coming soon</p></div></div><h1>{{video.title}}</h1><div class="facts big"><span>{{format_views(video.views)}} views</span><span>★ {{video.rating or 'Unrated'}}</span><span>{{video.duration or 'Duration unavailable'}}</span></div><a class="creator-bar" href="{{channel_path(video.channel_name)}}"><span class="avatar small">{{(video.channel_name or '?')[:1]|upper}}</span><span><small>CREATOR CHANNEL</small><strong>{{video.channel_name or 'Unknown channel'}}</strong></span><b>Visit channel →</b></a></article><aside><span class="eyebrow">KEEP EXPLORING</span><h2>More from this creator</h2>{% for v in related %}<a class="related" href="{{video_path(v.id)}}"><img src="{{image_url(v.img)}}" loading="lazy" alt=""><span><strong>{{v.title}}</strong><small>{{format_views(v.views)}} views · {{v.duration or 'Video'}}</small></span></a>{% endfor %}</aside></div></div>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{video.title}} — {{site_name}}{% endblock %}
+{% block description %}{{description_text}}{% endblock %}
+{% block head %}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{video.title}}">
+<meta property="og:description" content="{{description_text}}">
+<meta property="og:image" content="{{image_url(video.img)}}">
+<meta property="og:url" content="{{canonical(request.path)}}">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{{structured|tojson}}</script>
+{% endblock %}
+{% block content %}
+<div class="shell watch-new">
+  <nav class="watch-breadcrumb"><a href="/">Discover</a><span>/</span><a href="{{channel_path(video.channel_name)}}">{{video.channel_name or 'Creator'}}</a><span>/</span><span>Watch</span></nav>
+  <div class="watch-layout">
+    <article class="watch-primary">
+      <div class="poster premium-poster">
+        <img src="{{image_url(video.img)}}" alt="{{video.title}}" width="1280" height="720">
+        <div class="poster-message"><span>▶</span><p>Video playback integration coming soon</p></div>
+      </div>
+      <div class="watch-heading">
+        <h1>{{video.title}}</h1>
+        <div class="watch-meta"><span>{{format_views(video.views)}} views</span><span>★ {{video.rating or 'Unrated'}}</span><span>{{video.duration or 'Duration unavailable'}}</span></div>
+      </div>
+      <a class="creator-bar" href="{{channel_path(video.channel_name)}}">
+        <span class="avatar small">{{(video.channel_name or '?')[:1]|upper}}</span>
+        <span><small>CREATOR CHANNEL</small><strong>{{video.channel_name or 'Unknown channel'}}</strong></span>
+        <b>View channel →</b>
+      </a>
+    </article>
+    <aside class="watch-sidebar">
+      <span class="eyebrow">MORE TO EXPLORE</span>
+      <h2>From this channel</h2>
+      {% set videos=related[:4] %}
+      {% include '_cards.html' %}
+    </aside>
+  </div>
+  {% if related|length > 4 %}
+  <section class="watch-recommendations">
+    <div class="section-head"><div><span class="eyebrow">UP NEXT</span><h2>More from {{video.channel_name or 'this creator'}}</h2></div><a class="section-link" href="{{channel_path(video.channel_name)}}">View all →</a></div>
+    {% set videos=related[4:] %}
+    {% include '_cards.html' %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
