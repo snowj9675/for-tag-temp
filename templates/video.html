@@ -18,7 +18,7 @@
   <div class="watch-layout">
     <article class="watch-primary">
       <div class="poster premium-poster">
-        <video id="main-video" hidden controls playsinline preload="none" poster="{{image_url(video.img)}}" data-resolve="{{url_for('video_source',vid=video.id)}}" style="display:block;width:100%;aspect-ratio:16/9;background:#080808" aria-label="{{video.title}}"></video>
+        <video id="main-video" hidden controls playsinline preload="none" poster="{{image_url(video.img)}}" data-resolve="{{url_for('video_source',vid=video.id)}}" style="width:100%;aspect-ratio:16/9;background:#080808" aria-label="{{video.title}}"></video>
         <div class="poster-message" id="player-controls"><button type="button" id="load-video" style="padding:12px 24px;cursor:pointer">▶ Play video</button><p id="player-status" role="status">Stream is loaded only when you press play.</p></div>
       </div>
       <div class="watch-heading">
