@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Browse Channels — {{site_name}}{% endblock %}
+{% block description %}Discover creator channels and browse their video collections.{% endblock %}
+{% block content %}
+<div class="shell"><section class="profile"><div class="eyebrow">CREATOR DIRECTORY</div>
+<h1>Discover channels</h1><p>Explore creators and their video libraries.</p>
+<form action="/channels" method="get" class="channel-filter"><input name="q" value="{{q}}" placeholder="Find a channel..." aria-label="Find a channel"><button type="submit">Find channel</button></form>
+</section>
+<div class="library-head"><div><p class="section-kicker">CHANNELS</p><h2>Creator directory <span class="subtle">/ {{total}} channels</span></h2></div></div>
+{% if not snapshot_ready %}<p>The creator directory is being prepared. Check again after the catalog refresh.</p>{% endif %}
+<div class="channel-grid">
+{% for item in channels %}
+<a class="channel-tile" href="{{channel_path(item.name)}}">
+<div class="avatar">{{item.name[0]|upper}}</div><div class="channel-tile-meta"><strong>{{item.name}}</strong><span>{{'{:,}'.format(item.count)}} videos</span></div><span aria-hidden="true">↗</span>
+</a>
+{% endfor %}
+</div>
+{% if snapshot_ready and not channels %}<p>No channels matched your search.</p>{% endif %}
+<nav class="pager" aria-label="Channel pages">
+{% if page>1 %}<a class="next" href="{{url_for('channels.directory',q=q,page=page-1)}}">← Previous</a>{% endif %}
+{% if has_next %}<a class="next" href="{{url_for('channels.directory',q=q,page=page+1)}}">Next channels →</a>{% endif %}
+</nav></div>
+{% endblock %}
