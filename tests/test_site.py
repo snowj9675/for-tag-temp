@@ -37,7 +37,7 @@ class SiteSmokeTests(unittest.TestCase):
             r=self.client.get("/sitemap.xml")
             self.assertEqual(r.status_code,200)
             self.assertIn(b"<sitemapindex",r.data)
-            r=self.client.get("/sitemaps/videos-336.xml")
+            r=self.client.get("/sitemaps/videos-2100.xml")
             self.assertEqual(r.status_code,200)
             self.assertIn(b"<image:image>",r.data)
 
