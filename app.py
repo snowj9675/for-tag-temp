@@ -1,5 +1,6 @@
 import os,re,json
 from urllib.parse import quote
+from video_source import normalize_path, resolve_playback
 from flask import Flask,render_template,request,abort,make_response,jsonify,url_for
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
@@ -150,6 +151,22 @@ def video(vid):
         description_text=description,structured=structured))
     resp.headers["Cache-Control"]="public, s-maxage=300, stale-while-revalidate=1800"
     return resp
+
+@app.route("/api/video-source/<int:vid>")
+def video_source(vid):
+    rows=read_query("SELECT url FROM public.channel_videos WHERE id=%s",(vid,))
+    if not rows:abort(404)
+    if not normalize_path(rows[0]["url"]):
+        return jsonify(error="Unsupported video path"),422
+    try:
+        source=resolve_playback(rows[0]["url"])
+    except Exception:
+        app.logger.warning("Video source unavailable for id=%s",vid,exc_info=False)
+        return jsonify(error="Video source unavailable or blocked by upstream"),502
+    response=jsonify(source)
+    response.headers["Cache-Control"]="private, no-store"
+    response.headers["X-Robots-Tag"]="noindex"
+    return response
 
 @app.route("/search")
 def search():
