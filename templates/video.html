@@ -9,6 +9,8 @@
 <meta property="og:url" content="{{canonical(request.path)}}">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">{{structured|tojson}}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+<script defer src="{{url_for('static',filename='player.js')}}"></script>
 {% endblock %}
 {% block content %}
 <div class="shell watch-new">
@@ -16,8 +18,8 @@
   <div class="watch-layout">
     <article class="watch-primary">
       <div class="poster premium-poster">
-        <img src="{{image_url(video.img)}}" alt="{{video.title}}" width="1280" height="720">
-        <div class="poster-message"><span>▶</span><p>Video playback integration coming soon</p></div>
+        <video id="main-video" hidden controls playsinline preload="none" poster="{{image_url(video.img)}}" data-resolve="{{url_for('video_source',vid=video.id)}}" style="width:100%;aspect-ratio:16/9;background:#080808" aria-label="{{video.title}}"></video>
+        <div class="poster-message" id="player-controls"><button type="button" id="load-video" style="padding:12px 24px;cursor:pointer">▶ Play video</button><p id="player-status" role="status">Stream is loaded only when you press play.</p></div>
       </div>
       <div class="watch-heading">
         <h1>{{video.title}}</h1>
